@@ -1,5 +1,7 @@
 (ns four-x.voronoi
-  (:require [four-x.delauney :refer [triangulate]]))
+  (:require [four-x.delauney :refer [triangulate]]
+            [four-x.state.records :as r]
+            ))
 
 (def sqr-sum #(+ (* %1 %1) (* %2 %2)))
 
@@ -20,23 +22,26 @@
 
 (defn abs-sqr [[x y]] (+ (* x x) (* y y)))
 
-(defn voronoi-borders [points]
-  (let [{:keys [points edges triangles]} (triangulate points)
-        graph (for [triangle triangles
+(defn voronoi-borders [triangles]
+  (let [graph (for [triangle triangles
                     neighbor (get-neighbors triangle triangles)]
                 (vector (apply circumcenter neighbor)
                         (apply circumcenter triangle)))]
-    {:points points
-     :edges     edges
-     :triangles triangles
-     :borders   (->> graph
-                     (map #(sort-by abs-sqr %))
-                     (distinct)
-                     (sort-by #(abs-sqr (first %))))}))
+    (->> graph
+         (map #(sort-by abs-sqr %))
+         (distinct)
+         (sort-by #(abs-sqr (first %))))))
 
-(defn voronoi-cell [triangles point]
+(defn voronoi-map [points]
+  (let [{:keys [edges triangles]} (triangulate points)]
+    {:edges   edges
+     :borders (voronoi-borders triangles)}))
+
+(defn voronoi-sector [triangles point]
   (let [sector (filter (fn [t] (contains? (set t) point)) triangles)]
-    (for [triangle sector
-          neighbor (get-neighbors triangle sector)]
-      (vector (apply circumcenter neighbor)
-              (apply circumcenter triangle)))))
+    (r/->Sector point (voronoi-borders sector))))
+
+(defn generate-sectors [points]
+  (let [{:keys [points triangles]} (triangulate points)]
+    (zipmap (range (count points))
+            (map #(voronoi-sector triangles %) points))))
