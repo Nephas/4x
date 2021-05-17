@@ -1,10 +1,13 @@
 (ns four-x.core
   (:require [quil.core :as q :include-macros true]
             [quil.middleware :as m]
-            [four-x.starmap :refer [star-positions generate-stars get-closest]]
-            [four-x.draw :refer [draw]]
+            [four-x.starmap :refer [star-positions generate-stars]]
+            [four-x.draw :refer [draw redraw-geometry! redraw-stars! redraw-empires! init-buffers!]]
             [four-x.state.records :as r]
-            [four-x.state.selectors :refer [get-closest]]
+            [four-x.ai.deciders :refer [decide]]
+            [four-x.state.actions :refer [queue-action! has-actions? next-action!]]
+            [four-x.state.reducers :refer [reduce-action]]
+            [four-x.state.selectors :refer [get-closest-star get-expandable-neighborhood]]
             [four-x.voronoi :refer [voronoi-map generate-sectors]]))
 
 (def SCREENSIZE 1000)
@@ -19,23 +22,31 @@
         stars (generate-stars positions)
         sectors (generate-sectors positions)
         {borders :borders
-         lanes   :edges} (voronoi-map positions)]
-    {:selection 10
-     :turn      0
-     :empires   {0 (r/->Empire "the good"
-                               [0 128 255]
-                               (range 5 8))
-                 1 (r/->Empire "the bad"
-                               [128 128 255]
-                               (range 30 33))}
-     :stars     stars
-     :sectors   sectors
-     :lanes     lanes
-     :borders   borders}))
+         lanes   :edges} (voronoi-map positions)
+        state {:selection 10
+               :turn      0
+               :acting    0
+               :empires   {0 (r/->Empire "the good"
+                                         [0 128 255]
+                                         (range 5 8))
+                           1 (r/->Empire "the bad"
+                                         [128 128 255]
+                                         (range 30 33))}
+               :stars     stars
+               :sectors   sectors
+               :lanes     lanes
+               :borders   borders}]
+    (init-buffers!)
+    (redraw-geometry! state)
+    (redraw-empires! state)
+    (redraw-stars! state)
+    state))
 
 (defn update-state [state]
-  (if (zero? (mod (q/frame-count) 30)) (update state :turn inc)
-                                       state))
+  (do (when (and (not= 0 (:acting state)) (not (has-actions?)))
+        (queue-action! (decide state (:acting state))))
+      (if (has-actions?) (reduce-action state (next-action!))
+                         state)))
 
 (defn handle-key [state event]
   (let [key (:key event)]
@@ -44,14 +55,15 @@
 
 (defn handle-move [state event]
   (let [{x :x y :y} event
-        id (get-closest (:stars state) [x y])]
+        id (get-closest-star state [x y])]
     (assoc state :selection id)))
 
 (defn handle-click [state event]
   (let [{x :x y :y} event
-        id (get-closest (:stars state) [x y])]
-    (println event)
-    (update-in state [:empires 0 :sectors] conj id)))
+        id (get-closest-star state [x y])
+        expandable-sector-ids (set (get-expandable-neighborhood state 0))]
+    (do (when (contains? expandable-sector-ids id) (queue-action! [:expand 0 id]))
+        state)))
 
 (defn ^:export run-sketch []
   (q/defsketch four-x
