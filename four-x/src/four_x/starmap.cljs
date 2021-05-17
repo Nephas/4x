@@ -7,17 +7,17 @@
         (> val hi) hi
         true val))
 
-(defn bounded-point [[x y] mapsize]
-  [(bounded 0 x mapsize)
-   (bounded 0 y mapsize)])
+(defn bounded-point [[x y] [x-max y-max]]
+  [(bounded 0 x x-max)
+   (bounded 0 y y-max)])
 
 (defn noisy [n med]
   (+ n (* med (q/random-gaussian))))
 
-(defn star-positions [mapsize tilesize]
-  (for [x (range 0 mapsize tilesize)
-        y (range 0 mapsize tilesize)]
-    (bounded-point [(noisy x (* 0.33 tilesize)) (noisy y (* 0.33 tilesize))] mapsize)))
+(defn star-positions [[map-x map-y] tilesize]
+  (for [x (range 0 map-x tilesize)
+        y (range 0 map-y tilesize)]
+    (bounded-point [(noisy x (* 0.33 tilesize)) (noisy y (* 0.33 tilesize))] [map-x map-y])))
 
 (defn rand-name []
   (clojure.string/join (take (int (q/random 3 6))

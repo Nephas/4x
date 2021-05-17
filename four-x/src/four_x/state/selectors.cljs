@@ -32,3 +32,12 @@
   (let [neighbor-ids (set (get-empire-neighborhood state empire-id))
         occupied-ids (set (flat-map (fn [[id empire]] (:sectors empire)) (:empires state)))]
     (clojure.set/difference neighbor-ids occupied-ids)))
+
+(defn get-exploitable-sectors "returns: list of sector-ids" [state empire-id]
+  (filter (fn [id] (< (get-in state [:sectors id :exploit]) 2))
+          (get-in state [:empires empire-id :sectors])))
+
+(defn get-total-exploit [state empire-id]
+  (let [sector-ids (get-in state [:empires empire-id :sectors])
+        sectors (vals (select-keys (:sectors state) sector-ids))]
+    (apply + (map #(:exploit %) sectors))))

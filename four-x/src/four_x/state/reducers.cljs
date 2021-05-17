@@ -6,7 +6,8 @@
 
                :explore     (fn [state empire-id sector-id] state)
 
-               :exploit     (fn [state empire-id sector-id] state)
+               :exploit     (fn [state empire-id sector-id]
+                              (update-in state [:sectors sector-id :exploit] inc))
 
                :exterminate (fn [state empire-id sector-id] state)
 
@@ -19,6 +20,6 @@
         next-state (-> state
                        (reducer empire-id sector-id)
                        (update :turn inc)
-                       (update :acting (fn [id] (mod (inc id) 2))))]
+                       (update :acting (fn [id] (mod (inc id) (count (:empires state))))))]
     (do (redraw-empires! next-state)
         next-state)))

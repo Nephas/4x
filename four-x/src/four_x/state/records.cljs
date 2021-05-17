@@ -2,6 +2,6 @@
 
 (defrecord Star [pos name col])
 
-(defrecord Sector [pos border])
+(defrecord Sector [pos border exploit])
 
 (defrecord Empire [name col sectors])

@@ -1,6 +1,9 @@
 (ns four-x.ai.deciders
-  (:require [four-x.state.selectors :refer [get-expandable-neighborhood]]))
+  (:require [four-x.state.selectors :refer [get-expandable-neighborhood get-exploitable-sectors]]
+            [quil.core :as q]))
 
 (defn decide "returns: an action for the empire" [state empire-id]
-  (let [expandable-sector-ids (set (get-expandable-neighborhood state empire-id))]
-    [:expand empire-id (first expandable-sector-ids)]))
+  (let [possible-actions (concat (map #(vector :expand empire-id %) (get-expandable-neighborhood state empire-id))
+                                 (map #(vector :exploit empire-id %) (get-exploitable-sectors state empire-id)))]
+    (if (empty? possible-actions) [:pass empire-id nil]
+                                  (nth possible-actions (int (q/random (count possible-actions)))))))

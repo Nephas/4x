@@ -39,7 +39,7 @@
 
 (defn voronoi-sector [triangles point]
   (let [sector (filter (fn [t] (contains? (set t) point)) triangles)]
-    (r/->Sector point (voronoi-borders sector))))
+    (r/->Sector point (voronoi-borders sector) 0)))
 
 (defn generate-sectors [points]
   (let [{:keys [points triangles]} (triangulate points)]
