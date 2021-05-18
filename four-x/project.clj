@@ -6,6 +6,7 @@
   :dependencies [[org.clojure/clojure "1.10.1"]
                  [quil "3.1.0"]
                  [trystan/delaunay-triangulation "1.0.1"]
+                 [binaryage/devtools "1.0.3"]
                  [org.clojure/clojurescript "1.10.520"]]
 
   :plugins [[lein-cljsbuild "1.1.7"]
@@ -20,6 +21,7 @@
              :figwheel true
              :compiler
              {:main "four_x.core"
+              :preloads [devtools.preload]
               :output-to "resources/public/js/main.js"
               :output-dir "resources/public/js/development"
               :asset-path "js/development"}}

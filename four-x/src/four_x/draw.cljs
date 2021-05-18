@@ -1,6 +1,6 @@
 (ns four-x.draw
   (:require [quil.core :as q]
-            [four-x.state.selectors :refer [get-neighborhood get-empire-neighborhood get-total-exploit]]))
+            [four-x.state.selectors :refer [get-neighborhood get-empire-neighborhood get-total-exploit get-sector-count get-action-points]]))
 
 (def layers (atom {:geometry nil
                    :empires  nil
@@ -82,11 +82,12 @@
                       (q/fill 255 255)
                       (q/stroke-weight 0)
                       (q/text (str "turn: " (:turn state)) 30 30)
-                      (q/text (str "acting: " (:acting state)) 30 50)
+                      (q/text (str "acting: " (get-in state [:active :empire])) 30 50)
+                      (q/text (str "actions: " (get-in state [:active :actions]) "/" (get-action-points state 0)) 30 70)
                       (q/text (str "fps: " (int (q/current-frame-rate))) 30 900)
 
                       (q/text (str "exploit: " (get-total-exploit state 0)) 30 90)
-                      (q/text (str "size: " (count (get-in state [:empires 0 :sectors]))) 30 110)
+                      (q/text (str "size: " (get-sector-count state 0)) 30 110)
 
                       (q/no-stroke)
                       (q/fill 255 255)

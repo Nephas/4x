@@ -29,8 +29,7 @@
                         (apply circumcenter triangle)))]
     (->> graph
          (map #(sort-by abs-sqr %))
-         (distinct)
-         (sort-by #(abs-sqr (first %))))))
+         (distinct))))
 
 (defn voronoi-map [points]
   (let [{:keys [edges triangles]} (triangulate points)]

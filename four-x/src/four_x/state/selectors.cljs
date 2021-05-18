@@ -34,10 +34,27 @@
     (clojure.set/difference neighbor-ids occupied-ids)))
 
 (defn get-exploitable-sectors "returns: list of sector-ids" [state empire-id]
-  (filter (fn [id] (< (get-in state [:sectors id :exploit]) 2))
+  (filter (fn [id] (< (get-in state [:sectors id :exploit]) 4))
           (get-in state [:empires empire-id :sectors])))
+
+(defn get-attackable-sectors "returns: list of sector-ids" [state empire-id]
+  (let [neighbor-ids (set (get-empire-neighborhood state empire-id))
+        other-empires (dissoc (:empires state) empire-id)
+        occupied-ids (set (flat-map (fn [[id empire]] (:sectors empire)) other-empires))]
+    (clojure.set/intersection neighbor-ids occupied-ids)))
+
+(defn get-sector-count [state empire-id]
+  (count (get-in state [:empires empire-id :sectors])))
 
 (defn get-total-exploit [state empire-id]
   (let [sector-ids (get-in state [:empires empire-id :sectors])
         sectors (vals (select-keys (:sectors state) sector-ids))]
     (apply + (map #(:exploit %) sectors))))
+
+(defn get-action-points [state empire-id]
+  (let [sectors (get-sector-count state empire-id)
+        exploit (get-total-exploit state empire-id)]
+    (max 1 (Math/round (- exploit (* 2 sectors))))))
+
+(defn get-owning-empire "returns: empire-id" [state sector-id]
+  (first (first (filter (fn [[id empire]] (contains? (set (:sectors empire)) sector-id)) (:empires state)))))
