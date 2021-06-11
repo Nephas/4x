@@ -10,8 +10,11 @@
 (defn is-neighbor [sector-a sector-b]
   (= 1 (count (clojure.set/intersection (set (:border sector-a)) (set (:border sector-b))))))
 
-
 ; ===== SELECTORS =====
+
+(defn fully-exploited? [state sector-id]
+  (let [{exploit :exploit exploit-limit :exploit-limit} (get-in state [:sectors sector-id])]
+    (>= exploit exploit-limit)))
 
 (defn get-closest-star "returns: id of the star closest to pos" [state pos]
   (first (apply min-key (fn [[id {p' :pos}]] (sqr-dist pos p')) (:stars state))))
@@ -31,10 +34,11 @@
 (defn get-expandable-neighborhood "returns: list of sector-ids" [state empire-id]
   (let [neighbor-ids (set (get-empire-neighborhood state empire-id))
         occupied-ids (set (flat-map (fn [[id empire]] (:sectors empire)) (:empires state)))]
-    (clojure.set/difference neighbor-ids occupied-ids)))
+    (->> (clojure.set/difference neighbor-ids occupied-ids)
+         (filter (fn [id] (< 0 (get-in state [:sectors id :exploit-limit])))))))
 
 (defn get-exploitable-sectors "returns: list of sector-ids" [state empire-id]
-  (filter (fn [id] (< (get-in state [:sectors id :exploit]) 4))
+  (filter (fn [id] (not (fully-exploited? state id)))
           (get-in state [:empires empire-id :sectors])))
 
 (defn get-attackable-sectors "returns: list of sector-ids" [state empire-id]
@@ -54,7 +58,13 @@
 (defn get-action-points [state empire-id]
   (let [sectors (get-sector-count state empire-id)
         exploit (get-total-exploit state empire-id)]
-    (max 1 (Math/round (- exploit (* 2 sectors))))))
+    (max 1 (Math/round (Math/pow (max 1 (- exploit (* 2 sectors))) 0.75)))))
 
 (defn get-owning-empire "returns: empire-id" [state sector-id]
   (first (first (filter (fn [[id empire]] (contains? (set (:sectors empire)) sector-id)) (:empires state)))))
+
+(defn get-sector-value [state sector-id]
+  (get-in state [:sectors sector-id :exploit-limit]))
+
+  (defn is-capital? [state empire-id sector-id]
+  (= sector-id (get-in state [:empires empire-id :capital])))

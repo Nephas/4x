@@ -1,9 +1,15 @@
 (ns four-x.voronoi
   (:require [four-x.delauney :refer [triangulate]]
             [four-x.state.records :as r]
-            ))
+            [quil.core :as q]))
 
 (def sqr-sum #(+ (* %1 %1) (* %2 %2)))
+
+(defn exploit-distro [[x y]]
+  (->> (q/random 3)
+       (+ (* 3 (- 1 (/ (Math/sqrt (sqr-sum (- 500 x) (- 500 y))) 500))))
+       (int)))
+
 
 (defn neighbor? [triangle-a triangle-b]
   (->> (map #(contains? (set triangle-a) %) triangle-b)
@@ -36,11 +42,11 @@
     {:edges   edges
      :borders (voronoi-borders triangles)}))
 
-(defn voronoi-sector [triangles point]
+(defn sector-borders [triangles point]
   (let [sector (filter (fn [t] (contains? (set t) point)) triangles)]
-    (r/->Sector point (voronoi-borders sector) 0)))
+    (voronoi-borders sector)))
 
-(defn generate-sectors [points]
+(defn voronoi-sectors [points]
   (let [{:keys [points triangles]} (triangulate points)]
     (zipmap (range (count points))
-            (map #(voronoi-sector triangles %) points))))
+            (map #(r/->Sector % (sector-borders triangles %) 0 (exploit-distro %)) points))))

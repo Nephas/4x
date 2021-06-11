@@ -9,10 +9,17 @@
 (defn redraw-stars! [state]
   (q/with-graphics (:stars @layers)
                    (q/clear)
-                   (q/stroke-weight 10)
+                   (q/stroke-weight 5)
+                   (q/no-fill)
                    (doseq [[id {[x y] :pos col :col}] (:stars state)]
                      (apply q/stroke col)
-                     (q/point x y))))
+                     (q/point x y))
+
+                   (q/stroke-weight 1)
+                   (q/stroke 128)
+                   (doseq [[id {[x y] :pos exploit-limit :exploit-limit}] (:sectors state)]
+                     (doseq [i (range 1 (inc exploit-limit))]
+                       (q/ellipse x y (* i 10) (* i 10))))))
 
 (defn redraw-geometry! [state]
   (q/with-graphics (:geometry @layers)
@@ -31,12 +38,20 @@
                    (q/clear)
                    (q/color-mode :hsb)
                    (q/no-stroke)
-                   (doseq [[empire-id empire] (:empires state)]
-                     (doseq [id (:sectors empire)]
+                   (doseq [[empire-id {sectors :sectors capital :capital col :col name :name}] (:empires state)]
+                     (doseq [id sectors]
                        (let [{[x1 y1] :pos x :exploit} (get-in state [:sectors id])]
-                         (apply q/fill (conj (:col empire) (* 64 (inc x))))
+                         (apply q/fill (conj col 64))
+                         (when (= id capital)
+                           (apply q/fill (conj col 128))
+                           (q/text name x1 y1))
+
                          (doseq [[[x2 y2] [x3 y3]] (get-in state [:sectors id :border])]
-                           (q/triangle x1 y1 x2 y2 x3 y3)))))))
+                           (q/triangle x1 y1 x2 y2 x3 y3))
+                         ;
+                         (apply q/fill (conj col 128))
+                         (q/ellipse x1 y1 (* x 10) (* x 10))
+                         )))))
 
 (defn init-buffers! [state [x y]]
   (let [stars (q/create-graphics x y)
@@ -67,15 +82,21 @@
     (q/text name (+ 10 x) y)))
 
 
-(defn draw-ranking-bar [[x y] ranking]
+(defn draw-ranking-bar [offset ranking]
   (let [total (apply + (map :points ranking))
         norm (/ 150 total)]
-    (loop [[current & remaining] (sort-by :points ranking)
-           acc 0]
-      (when (some? current) (let [points (:points current)]
-                              (apply q/fill (:col current))
-                              (q/rect (+ x (* norm acc)) y (* norm points) 20)
-                              (recur remaining (+ acc points)))))))
+    (q/with-translation offset
+                        (q/no-stroke)
+                        (loop [[current & remaining] (sort-by :points ranking)
+                               acc 0]
+                          (when (some? current) (let [points (:points current)]
+                                                  (apply q/fill (:col current))
+                                                  (q/rect (* norm acc) 0 (* norm points) 20)
+                                                  (recur remaining (+ acc points)))))
+                        (q/stroke 255)
+                        (q/stroke-weight 4)
+                        (q/line 75 0 75 20)
+                        (q/no-stroke))))
 
 (defn draw-ui [state]
   (q/with-translation [1000 0]
@@ -83,7 +104,7 @@
                       (q/stroke-weight 0)
                       (q/text (str "turn: " (:turn state)) 30 30)
                       (q/text (str "acting: " (get-in state [:active :empire])) 30 50)
-                      (q/text (str "actions: " (get-in state [:active :actions]) "/" (get-action-points state 0)) 30 70)
+                      (q/text (str "actions: " (get-in state [:empires 0 :actions]) "/ +" (get-action-points state 0)) 30 70)
                       (q/text (str "fps: " (int (q/current-frame-rate))) 30 900)
 
                       (q/text (str "exploit: " (get-total-exploit state 0)) 30 90)
@@ -100,7 +121,13 @@
                       (q/text (str "empire exploit:") 30 180)
                       (->> (:empires state)
                            (map (fn [[id empire]] (hash-map :col (:col empire) :points (get-total-exploit state id))))
-                           (draw-ranking-bar [30 190]))))
+                           (draw-ranking-bar [30 190]))
+
+                      (q/fill 255 255)
+                      (q/text (str "empire conquests:") 30 230)
+                      (->> (:empires state)
+                           (map (fn [[id empire]] (hash-map :col (:col empire) :points (get-in state [:empires id :conquests]))))
+                           (draw-ranking-bar [30 240]))))
 
 (defn draw [state]
   (try
@@ -109,6 +136,7 @@
         (q/image (:empires @layers) 0 0)
         (q/image (:stars @layers) 0 0)
         (draw-highlight state)
-        (draw-ui state))
+        (draw-ui state)
+        )
     (catch js/Error e
       (init-buffers! state [1000 1000]))))

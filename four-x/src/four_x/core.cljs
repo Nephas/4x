@@ -9,25 +9,24 @@
             [four-x.state.actions :refer [queue-action! has-actions? next-action!]]
             [four-x.state.reducers :refer [reduce-action]]
             [four-x.state.selectors :refer [get-closest-star get-expandable-neighborhood get-attackable-sectors get-exploitable-sectors]]
-            [four-x.voronoi :refer [voronoi-map generate-sectors]]))
+            [four-x.voronoi :refer [voronoi-map voronoi-sectors]]))
 
 (def SCREENSIZE [1200 1000])
 (def MAPSIZE [1000 1000])
-(def TILESIZE (/ (first MAPSIZE) 10))
-
-(def debug (atom nil))
+(def TILESIZE (/ (first MAPSIZE) 12))
 
 (defn setup []
   (q/frame-rate 30)
   (q/color-mode :hsb)
   (q/text-size 16)
-  (let [state (init-state MAPSIZE TILESIZE)]
+  (let [state (init-state MAPSIZE TILESIZE 6)]
     (init-buffers! state MAPSIZE)
     state))
 
 (defn update-state [state]
-  (reset! debug state)
-  (do (when (and (not= 0 (get-in state [:active :empire])) (not (has-actions?)))
+  (do (when (and (not (has-actions?)) (zero? (mod (q/frame-count) 5))
+                 ;(not= 0 (get-in state [:active :empire]))
+                 )
         (queue-action! (decide state (get-in state [:active :empire]))))
       (if (has-actions?) (reduce-action state (next-action!))
                          state)))
@@ -35,6 +34,7 @@
 (defn handle-key [state event]
   (let [key (:key event)]
     (do (when (= :b key) (init-buffers! state MAPSIZE))
+        (when (= :space key) (queue-action! [:pass 0 nil]))
         (println key)
         state)))
 
@@ -50,9 +50,10 @@
         exploitable-sector-ids (set (get-exploitable-sectors state 0))
         attackable-sector-ids (set (get-attackable-sectors state 0))
         ]
-    (do (when (contains? expandable-sector-ids id) (queue-action! [:expand 0 id]))
-        (when (contains? exploitable-sector-ids id) (queue-action! [:exploit 0 id]))
-        (when (contains? attackable-sector-ids id) (queue-action! [:exterminate 0 id]))
+    (do (when (zero? (get-in state [:active :empire]))
+          (cond (contains? expandable-sector-ids id) (queue-action! [:expand 0 id])
+                (contains? exploitable-sector-ids id) (queue-action! [:exploit 0 id])
+                (contains? attackable-sector-ids id) (queue-action! [:exterminate 0 id])))
         state)))
 
 (defn ^:export run-sketch []
